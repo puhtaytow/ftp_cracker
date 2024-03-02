@@ -1,5 +1,6 @@
 use anyhow::{Error, Ok};
 use core::result::Result::Ok as Okb;
+// use rayon::prelude::*;
 use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -34,7 +35,7 @@ fn cracker(logins: &str, passwords: &str, target: &str) -> Result<(), Error> {
 }
 
 fn caller(login: &str, password: &str, target: &str) -> Result<(), Error> {
-    println!(".");
+    println!("trying: {}:{} - {}", login, password, target);
     let mut ftp_stream = FtpStream::connect(target)?;
     match ftp_stream.login(login, password) {
         Err(_) => {}
