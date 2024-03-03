@@ -13,12 +13,18 @@ mod error;
 fn main() -> Result<(), Error> {
     let args: Vec<String> = env::args().collect();
     check_arguments(&args)?;
+
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(args[4].parse::<usize>().unwrap())
+        .build_global()
+        .unwrap();
+
     cracker(&args[1], &args[2], &args[3])?;
     Ok(())
 }
 
 fn check_arguments(args: &Vec<String>) -> Result<(), Error> {
-    if args.len() == 4 {
+    if args.len() == 5 {
         return Ok(());
     }
     Err(error::CrackerError::WrongArguments.into())
